@@ -62,7 +62,7 @@ client = OpenAI(
 )
 ```
 
-Replace `"proxy address"` with your proxy address if needed, and replace `"your api key"` with your actual OpenAI API key.
+Replace `"your api key"` with your actual OpenAI API key.
 
 ### Step 2: Update File Paths
 
