@@ -1,5 +1,5 @@
 
-# 🚀 LLMCER: LLM-Enhanced Entity Resolution Pipeline
+# 🚀 LLMCER
 
 ![Python](https://img.shields.io/badge/Python-3.8%2B-blue?style=for-the-badge&logo=python)
 ![OpenAI](https://img.shields.io/badge/OpenAI-GPT--4-green?style=for-the-badge&logo=openai)
