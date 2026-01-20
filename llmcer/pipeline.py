@@ -1,11 +1,16 @@
 
 import numpy as np
 import math
+import warnings
 from typing import List, Optional
 from concurrent.futures import ThreadPoolExecutor
 from llmcer.clustering import elbow_method, kmeans_clustering
 from llmcer.llm_interaction import process_sampled_ids, llm_seperate
 from llmcer.config import MAX_K
+
+# Filter sklearn ConvergenceWarning
+from sklearn.exceptions import ConvergenceWarning
+warnings.filterwarnings("ignore", category=ConvergenceWarning)
 
 def dynamic_sampling(original_array):
     result = []
@@ -208,6 +213,7 @@ def process_id_list(id_list, simi_matrix, data_file_path, the_threhold):
     pass
 
 def full_process_id_list(id_list, vectors, simi_matrix, df, the_threshold):
+    print(f"  [Thread] Processing block with {len(id_list)} items...")
     # 1. Get vectors from global vectors (efficient slicing)
     # id_list contains indices into the global vectors/data
     vectorized_data = np.array([vectors[i] for i in id_list])
@@ -219,6 +225,7 @@ def full_process_id_list(id_list, vectors, simi_matrix, df, the_threshold):
     
     # 3. Sampling
     prompt_id = dynamic_sampling(clusters_labels)
+    print(f"  [Thread] Block sampled into {len(prompt_id)} groups for LLM classification.")
     
     # 4. LLM Classification (First Pass)
     classified_results, execute_time, use_number, total_tokens = process_sampled_ids(df, prompt_id)
@@ -230,6 +237,7 @@ def full_process_id_list(id_list, vectors, simi_matrix, df, the_threshold):
     
     # 6. Traversal
     target_list = traverse_ids_to_2d(result_for_found, simi_matrix, max_length=10, batch_size=10)
+    print(f"  [Thread] Separation traversal generated {len(target_list)} target groups.")
     
     # 7. LLM Separation (Second Pass)
     llm_tmp = []
@@ -240,7 +248,9 @@ def full_process_id_list(id_list, vectors, simi_matrix, df, the_threshold):
     seperate_output_token = 0 # Need to track
     mdg_fail_total = 0  # Track total MDG interventions
     
-    for row_slice in target_list:
+    for i, row_slice in enumerate(target_list):
+        if i % 5 == 0:
+             print(f"  [Thread] Processing separation target group {i+1}/{len(target_list)}...")
         array_new, api_call, use_t, use_tok, in_tok, out_tok, mdg_count = llm_seperate(row_slice, df, simi_matrix, the_threshold)
         api_call_time_all += api_call
         sperate_time += use_t

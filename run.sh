@@ -11,8 +11,8 @@ export OPENAI_API_KEY=""
 
 # 2. Dataset Paths
 # Relative paths from project root
-export DATASET_PATH="datasets/demo_dataset/demo_er_dataset.xlsx"
-export GROUND_TRUTH_PATH="datasets/demo_dataset/demo_er_ground_truth.txt"
+export DATASET_PATH="datasets/cora/cora.csv"
+export GROUND_TRUTH_PATH="datasets/cora/gt.csv"
 
 # 3. Model Configuration
 # Path to local embedding model or Hugging Face model name

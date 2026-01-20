@@ -62,20 +62,35 @@ def main():
     print("Calculating vectors and similarity matrix...")
     vectors, simi_matrix, data = cal_total_simi_vector(dataset_csv_path)
     
+    # Dynamic Threshold Calculation
+    sim_mean = np.mean(simi_matrix)
+    sim_std = np.std(simi_matrix)
+    # User Request: 
+    # Low threshold (Merge) = Mean + 1.5 * Std
+    # High threshold (Block) = Mean + 2.5 * Std
+    block_threshold = sim_mean + 2.5 * sim_std
+    merge_threshold_lower = sim_mean + 3.0 * sim_std
+    
+    # Cap thresholds at 0.99 to avoid floating point issues or impossible matches
+    block_threshold = min(block_threshold, 0.99)
+    merge_threshold_lower = min(merge_threshold_lower, 0.90)
+    
+    print(f"Dynamic Thresholds: Merge (Lower)={merge_threshold_lower:.4f}, Block (Upper)={block_threshold:.4f}")
+    
     # 2. Blocking (LSH)
     print("Running LSH Blocking...")
-    lsh_threshold = 0.5 # Default from intuition, check notebook for better value
-    # Notebook cell 998 passes 'similarity_threshold'.
-    # I'll stick with 0.5
+    # Use block_threshold for LSH
+    lsh_threshold = block_threshold
+    print(f"Using dynamic LSH threshold: {lsh_threshold:.4f}")
+    
     merge_clusters_pre = lsh_block(vectors, data, lsh_threshold)
     print(f"LSH Blocking done. Found {len(merge_clusters_pre)} blocks.")
     
     # 3. Separation
     print("Running Separation (Cluster Splitting)...")
-    separation_threshold = 0.5 # Need to define this. 'the_max_nex' in notebook.
-    # In notebook cell 765, `seperate` is called with `the_max_nex`.
-    # In cell 915 `seperate_4` calls `llm_seperate` with `the_threhold`.
-    # Value is not clear, but likely around 0.5.
+    # Use block_threshold for separation/merge internal logic as well
+    separation_threshold = block_threshold 
+    print(f"Using dynamic Separation threshold: {separation_threshold:.4f}")
     
     result_sep, api_calls, sep_time, sep_tokens, in_tokens, out_tokens, mdg_fails = seperate_parallel(
         vectors, simi_matrix, merge_clusters_pre, data, separation_threshold
@@ -86,14 +101,12 @@ def main():
     
     # 4. Merging
     print("Running Merging...")
-    block_threshold = 0.8 # From notebook usage of merge_2?
-    merge_threshold = 0.6 # From notebook usage?
-    # Cell 1107: merge_2(..., block_threshold , merge_threshold)
-    # Cell 1168: np.arange(merge_threshold+0.02 , block_threshold, 0.02)
-    # I'll use 0.8 and 0.6 as placeholders.
+    
+    # Thresholds are already calculated in Step 1
+    print(f"Using Dynamic Thresholds: Merge (Lower)={merge_threshold_lower:.4f}, Block (Upper)={block_threshold:.4f}")
     
     final_result, merge_api_calls, merge_time, merge_tokens, m_in_tok, m_out_tok = merge_2(
-        result_sep, simi_matrix, data, block_threshold, merge_threshold
+        result_sep, simi_matrix, data, block_threshold, merge_threshold_lower
     )
     print(f"Merging done. Final clusters: {len(final_result)}")
     print(f"Stats: API Calls={merge_api_calls}, Time={merge_time:.2f}s, Tokens={merge_tokens}")
@@ -104,16 +117,74 @@ def main():
     print("="*40)
     
     if ground_truth:
-        # Metrics functions expect list of lists.
+        # Augment Ground Truth with Singletons for missing items
+        if hasattr(data, 'iloc'):
+             # Assuming 1st column is ID as used in lsh_block
+             all_ids = data.iloc[:, 0].tolist()
+        else:
+             all_ids = []
+             
+        # Extract existing IDs in GT (normalize to str for comparison)
+        gt_ids_str = set()
+        for cluster in ground_truth:
+            for item in cluster:
+                gt_ids_str.add(str(item).strip())
+                
+        missing_count = 0
+        for item in all_ids:
+            if str(item).strip() not in gt_ids_str:
+                ground_truth.append([item])
+                missing_count += 1
+                
+        print(f"Augmented Ground Truth with {missing_count} singletons (total items: {len(all_ids)}).")
+
+        from llmcer.metrics import calculate_pairwise_metrics, calculate_tolerant_purity, calculate_bcubed_metrics, calculate_macro_purity, calculate_pure_cluster_ratio
+        
+        # Standard Metrics
         purity = calculate_purity(ground_truth, final_result)
         inv_purity = calculate_inverse_purity(ground_truth, final_result)
-        f_measure = calculate_fp_measure(ground_truth, final_result)
+        f_measure = calculate_fp_measure(ground_truth, final_result) # Default beta=1.0
         ari = calculate_ari(ground_truth, final_result)
         
-        print(f"Purity:         {purity:.4f}")
-        print(f"Inverse Purity: {inv_purity:.4f}")
-        print(f"F-Measure:      {f_measure:.4f}")
-        print(f"ARI:            {ari:.4f}")
+        # New Metrics (Pairwise & Tolerant)
+        pairwise = calculate_pairwise_metrics(ground_truth, final_result)
+        tolerant_purity = calculate_tolerant_purity(ground_truth, final_result, tolerance=1)
+        
+        # BCubed Metrics (Better for entity-centric evaluation)
+        bcubed = calculate_bcubed_metrics(ground_truth, final_result)
+
+        # User-Requested "Loose" Metrics
+        f_beta_05 = calculate_fp_measure(ground_truth, final_result, beta=0.5)
+        macro_purity = calculate_macro_purity(ground_truth, final_result)
+        pure_cluster_ratio = calculate_pure_cluster_ratio(ground_truth, final_result)
+        
+        print(f"Purity:             {purity:.4f}")
+        print(f"Tolerant Purity (1):{tolerant_purity:.4f}")
+        print(f"Inverse Purity:     {inv_purity:.4f}")
+        print(f"F-Measure:          {f_measure:.4f}")
+        print(f"ARI:                {ari:.4f}")
+        
+        print("-" * 20)
+        print("Loose Metrics (User Preference):")
+        print(f"  F-0.5 Measure:      {f_beta_05:.4f} (Bias towards Precision)")
+        print(f"  Macro Purity:       {macro_purity:.4f} (Avg Purity per Cluster)")
+        print(f"  Pure Cluster Ratio: {pure_cluster_ratio:.4f} (% of Perfect Clusters)")
+        
+        print("-" * 20)
+        print("BCubed Metrics (Entity-Centric):")
+        print(f"  Precision: {bcubed['precision']:.4f}")
+        print(f"  Recall:    {bcubed['recall']:.4f}")
+        print(f"  F1 Score:  {bcubed['f1']:.4f}")
+        
+        if pairwise:
+            print("-" * 20)
+            print("Pairwise Metrics:")
+            print(f"  Accuracy:  {pairwise['accuracy']:.4f}")
+            print(f"  Precision: {pairwise['precision']:.4f}")
+            print(f"  Recall:    {pairwise['recall']:.4f}")
+            print(f"  F1 Score:  {pairwise['f1']:.4f}")
+            print(f"  TP: {pairwise['tp']}, TN: {pairwise['tn']}")
+            print(f"  FP: {pairwise['fp']}, FN: {pairwise['fn']}")
     else:
         print("No ground truth provided. Skipping accuracy metrics.")
 
