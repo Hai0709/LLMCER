@@ -20,7 +20,10 @@ def process_sampled_ids(df, sample_ids_list):
     total_tokens_call = 0
     
     all_classified_results = []
-    for ids in sample_ids_list:
+    total_samples = len(sample_ids_list)
+    for idx, ids in enumerate(sample_ids_list):
+        if idx % 5 == 0:
+            print(f"    [LLM] Classifying sample batch {idx+1}/{total_samples}...")
         content_prompt = get_prompt_from_indices(indices=ids, df=df)
         start_time = time.time()
         completion = client.chat.completions.create(
@@ -114,8 +117,13 @@ def llm_seperate(data_list, df, ini_simi, the_max_nex):
     result_sliced = []
     number = math.ceil(len(data_list) / 10)
     sliced_lists = [data_list[i * 10:(i + 1) * 10] for i in range(number)]
+    
+    if number > 5:
+        print(f"    [LLM-Sep] Splitting large group into {number} batches...")
 
-    for one_slice in sliced_lists:
+    for i, one_slice in enumerate(sliced_lists):
+        if number > 5 and i % 5 == 0:
+             print(f"    [LLM-Sep] Processing batch {i+1}/{number}...")
         api_call_time += 1
         result_tmp = []
         for attempt in range(2):  
@@ -255,7 +263,8 @@ def merge_2(clusters, simi_matrix, df, block_threshold, merge_threshold):
             answer = completion.choices[0].message.content.lower().strip() 
             if 'yes' in answer:
                 count_yes += 1
-        if count_yes/len(selected_target) >= 0.2:
+        # Increased threshold from 0.2 to 0.5 to prevent over-merging
+        if count_yes/len(selected_target) >= 0.5:
             need_merge += find_merge_cells(similarity_matrix, threshold-0.02, threshold)
     for row_in_need_merge in need_merge:
         map_merge[row_in_need_merge[0]] = 1
