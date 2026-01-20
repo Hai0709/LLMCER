@@ -9,14 +9,6 @@
 
 ---
 
-## 📖 Overview
-
-**LLMCER** (Large Language Model for Entity Resolution) is a cutting-edge pipeline designed to solve the complex problem of Entity Resolution (ER) — identifying and merging records that refer to the same real-world entity across different datasets. 
-
-By leveraging the semantic understanding of **LLMs** (GPT-4o-mini) combined with traditional **Locality Sensitive Hashing (LSH)** and **K-Means Clustering**, LLMCER achieves high accuracy while maintaining scalability through parallel processing and intelligent blocking.
-
----
-
 ## ✨ Key Features
 
 *   **⚡ Parallel Execution**: Optimized with `ThreadPoolExecutor` for concurrent processing of entity blocks, significantly reducing runtime.
