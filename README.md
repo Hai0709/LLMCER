@@ -56,6 +56,21 @@ LLMCER/
 
 ---
 
+## 📊 Datasets
+
+The repository includes several benchmark datasets for Entity Resolution:
+
+*   **Cora**: Citation data (Author, Title, Venue, Year).
+*   **Citesheer**: Scientific publications and citations.
+*   **Google-DBLP**: Bibliographic data from Google Scholar and DBLP.
+*   **Walmart-Amazon**: Product matching between Walmart and Amazon.
+*   **Music20K**: Large-scale music records.
+*   **Sigmod**: Database records from SIGMOD.
+*   **Affiliation**: Academic affiliation strings.
+*   **Song**: Song metadata.
+
+---
+
 ## 🚀 Getting Started
 
 ### 1. Prerequisites
