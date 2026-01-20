@@ -75,13 +75,13 @@ def main():
     block_threshold = min(block_threshold, 0.99)
     merge_threshold_lower = min(merge_threshold_lower, 0.90)
     
-    print(f"Dynamic Thresholds: Merge (Lower)={merge_threshold_lower:.4f}, Block (Upper)={block_threshold:.4f}")
+    # print(f"Dynamic Thresholds: Merge (Lower)={merge_threshold_lower:.4f}, Block (Upper)={block_threshold:.4f}")
     
     # 2. Blocking (LSH)
     print("Running LSH Blocking...")
     # Use block_threshold for LSH
     lsh_threshold = block_threshold
-    print(f"Using dynamic LSH threshold: {lsh_threshold:.4f}")
+    # print(f"Using dynamic LSH threshold: {lsh_threshold:.4f}")
     
     merge_clusters_pre = lsh_block(vectors, data, lsh_threshold)
     print(f"LSH Blocking done. Found {len(merge_clusters_pre)} blocks.")
@@ -90,7 +90,7 @@ def main():
     print("Running Separation (Cluster Splitting)...")
     # Use block_threshold for separation/merge internal logic as well
     separation_threshold = block_threshold 
-    print(f"Using dynamic Separation threshold: {separation_threshold:.4f}")
+    # print(f"Using dynamic Separation threshold: {separation_threshold:.4f}")
     
     result_sep, api_calls, sep_time, sep_tokens, in_tokens, out_tokens, mdg_fails = seperate_parallel(
         vectors, simi_matrix, merge_clusters_pre, data, separation_threshold
@@ -103,7 +103,7 @@ def main():
     print("Running Merging...")
     
     # Thresholds are already calculated in Step 1
-    print(f"Using Dynamic Thresholds: Merge (Lower)={merge_threshold_lower:.4f}, Block (Upper)={block_threshold:.4f}")
+    # print(f"Using Dynamic Thresholds: Merge (Lower)={merge_threshold_lower:.4f}, Block (Upper)={block_threshold:.4f}")
     
     final_result, merge_api_calls, merge_time, merge_tokens, m_in_tok, m_out_tok = merge_2(
         result_sep, simi_matrix, data, block_threshold, merge_threshold_lower
