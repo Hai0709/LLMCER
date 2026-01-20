@@ -1,6 +1,5 @@
 all-MiniLM-L6-v2/
 all-MiniLM/
-datasets/
 logs/
 code/
 __pycache__/
