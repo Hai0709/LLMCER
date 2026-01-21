@@ -65,9 +65,8 @@ def main():
     # Dynamic Threshold Calculation
     sim_mean = np.mean(simi_matrix)
     sim_std = np.std(simi_matrix)
-    # User Request: 
-    # Low threshold (Merge) = Mean + 1.5 * Std
-    # High threshold (Block) = Mean + 2.5 * Std
+    
+    # Dynamic thresholds based on similarity statistics
     block_threshold = sim_mean + 2.5 * sim_std
     merge_threshold_lower = sim_mean + 3.0 * sim_std
     
@@ -75,13 +74,10 @@ def main():
     block_threshold = min(block_threshold, 0.99)
     merge_threshold_lower = min(merge_threshold_lower, 0.90)
     
-    # print(f"Dynamic Thresholds: Merge (Lower)={merge_threshold_lower:.4f}, Block (Upper)={block_threshold:.4f}")
-    
     # 2. Blocking (LSH)
     print("Running LSH Blocking...")
     # Use block_threshold for LSH
     lsh_threshold = block_threshold
-    # print(f"Using dynamic LSH threshold: {lsh_threshold:.4f}")
     
     merge_clusters_pre = lsh_block(vectors, data, lsh_threshold)
     print(f"LSH Blocking done. Found {len(merge_clusters_pre)} blocks.")
@@ -90,7 +86,6 @@ def main():
     print("Running Separation (Cluster Splitting)...")
     # Use block_threshold for separation/merge internal logic as well
     separation_threshold = block_threshold 
-    # print(f"Using dynamic Separation threshold: {separation_threshold:.4f}")
     
     result_sep, api_calls, sep_time, sep_tokens, in_tokens, out_tokens, mdg_fails = seperate_parallel(
         vectors, simi_matrix, merge_clusters_pre, data, separation_threshold
@@ -103,7 +98,6 @@ def main():
     print("Running Merging...")
     
     # Thresholds are already calculated in Step 1
-    # print(f"Using Dynamic Thresholds: Merge (Lower)={merge_threshold_lower:.4f}, Block (Upper)={block_threshold:.4f}")
     
     final_result, merge_api_calls, merge_time, merge_tokens, m_in_tok, m_out_tok = merge_2(
         result_sep, simi_matrix, data, block_threshold, merge_threshold_lower
@@ -138,7 +132,7 @@ def main():
                 
         print(f"Augmented Ground Truth with {missing_count} singletons (total items: {len(all_ids)}).")
 
-        from llmcer.metrics import calculate_pairwise_metrics, calculate_tolerant_purity, calculate_bcubed_metrics, calculate_macro_purity, calculate_pure_cluster_ratio
+        from llmcer.metrics import calculate_pairwise_metrics, calculate_bcubed_metrics
         
         # Standard Metrics
         purity = calculate_purity(ground_truth, final_result)
@@ -146,29 +140,16 @@ def main():
         f_measure = calculate_fp_measure(ground_truth, final_result) # Default beta=1.0
         ari = calculate_ari(ground_truth, final_result)
         
-        # New Metrics (Pairwise & Tolerant)
+        # Pairwise Metrics
         pairwise = calculate_pairwise_metrics(ground_truth, final_result)
-        tolerant_purity = calculate_tolerant_purity(ground_truth, final_result, tolerance=1)
         
-        # BCubed Metrics (Better for entity-centric evaluation)
+        # BCubed Metrics (Entity-Centric)
         bcubed = calculate_bcubed_metrics(ground_truth, final_result)
 
-        # User-Requested "Loose" Metrics
-        f_beta_05 = calculate_fp_measure(ground_truth, final_result, beta=0.5)
-        macro_purity = calculate_macro_purity(ground_truth, final_result)
-        pure_cluster_ratio = calculate_pure_cluster_ratio(ground_truth, final_result)
-        
         print(f"Purity:             {purity:.4f}")
-        print(f"Tolerant Purity (1):{tolerant_purity:.4f}")
         print(f"Inverse Purity:     {inv_purity:.4f}")
         print(f"F-Measure:          {f_measure:.4f}")
         print(f"ARI:                {ari:.4f}")
-        
-        print("-" * 20)
-        print("Loose Metrics (User Preference):")
-        print(f"  F-0.5 Measure:      {f_beta_05:.4f} (Bias towards Precision)")
-        print(f"  Macro Purity:       {macro_purity:.4f} (Avg Purity per Cluster)")
-        print(f"  Pure Cluster Ratio: {pure_cluster_ratio:.4f} (% of Perfect Clusters)")
         
         print("-" * 20)
         print("BCubed Metrics (Entity-Centric):")
